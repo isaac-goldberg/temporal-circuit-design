@@ -2,28 +2,34 @@ from classes import *
 import asyncio
 
 async def main():
-    entry = Entry()
+    # path 1
+    entry = EntryGate()
     entry.schedule(1)
     entry.schedule(2)
     
-    gate = Max(2)
-    entry.connect(gate)
-    delay = AddConstant(0.5)
-    gate.connect(delay)
+    maxgate = MaxGate(2)
+    entry.connect(maxgate)
+    delay = AddConstGate(0.5)
+    maxgate.connect(delay)
     
-    delay2 = AddConstant(0.5)
-    entry.connect(delay2)
+    # path 2
+    entry2 = EntryGate()
+    entry2.schedule(1)
     
-    mingate = Min()
+    delay2 = AddConstGate(0.5)
+    entry2.connect(delay2)
+
+    # see fastest path    
+    mingate = MinGate()
+    exit = ExitGate()
+    
     delay.connect(mingate)
     delay2.connect(mingate)
-
-    exit = Exit()
     mingate.connect(exit)
     
     try:
-        await entry.start()
-    except ExitProgram:
+        await simulation.start()
+    except ExitSimulation:
         print("Program terminated")
             
 asyncio.run(main())

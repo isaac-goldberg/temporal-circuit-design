@@ -1,10 +1,23 @@
 import asyncio
 import time
 
-circuit_start = 0
-
-class ExitProgram(Exception):
+class ExitSimulation(Exception):
     pass
+
+class Simulation:
+    def __init__(self):
+        self.circuit_start = 0
+        self.entry_gates: list[EntryGate] = []
+        
+    def add_entry(self, gate: EntryGate):
+        self.entry_gates.append(gate)
+        
+    async def start(self):
+        self.circuit_start = time.time()
+        tasks = [asyncio.create_task(gate.start()) for gate in self.entry_gates]
+        await asyncio.gather(*tasks)
+        
+simulation = Simulation()
 
 """Base class for all gates."""
 class Gate:
@@ -24,7 +37,7 @@ class Gate:
             await output.process(self)
             
 """The Min gate takes any number of inputs. It outputs once any input goes high."""
-class Min(Gate):    
+class MinGate(Gate):    
     def __init__(self):
         super().__init__()
         
@@ -33,7 +46,7 @@ class Min(Gate):
         await self.propagate()
 
 """The Max gate can take any number of input events, but it must be told the number of inputs to wait for. It outputs once all inputs are high."""
-class Max(Gate):
+class MaxGate(Gate):
     def __init__(self, num_inputs: int):
         super().__init__()
         self.num_inputs = num_inputs
@@ -43,8 +56,8 @@ class Max(Gate):
         self.received_count += 1
         if self.received_count == self.num_inputs: await self.propagate()
             
-"""The AddConstant gate takes exactly one input event T and a constant K, and outputs at time T + K."""
-class AddConstant(Gate):    
+"""The AddConst gate takes exactly one input event T and a constant K, and outputs at time T + K."""
+class AddConstGate(Gate):    
     def __init__(self, K: float):
         super().__init__()
         self.K = K
@@ -54,7 +67,7 @@ class AddConstant(Gate):
         await self.propagate()
         
 """The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
-class Inhibit(Gate):
+class InhibitGate(Gate):
     def __init__(self):
         super().__init__()
         self.td = None
@@ -82,19 +95,20 @@ class Inhibit(Gate):
             raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
 
 """Connect other gates to an Exit gate to singify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
-class Exit(Gate):
+class ExitGate(Gate):
     def __init__(self):
         super().__init__()
     
     async def process(self, _):
         print(f"time elapsed: {time.time() - circuit_start}")
-        raise ExitProgram()
+        raise ExitSimulation()
 
 """Use the Entry gate to provide initial event signals, with delays, to the circuit."""
-class Entry(Gate):
+class EntryGate(Gate):
     def __init__(self):
         super().__init__()
         self.scheduled_events = []
+        simulation.add_entry(self)
     
     def schedule(self, delay: float):
         self.scheduled_events.append(delay)
