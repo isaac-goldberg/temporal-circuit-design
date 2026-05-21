@@ -3,9 +3,6 @@ from dataclasses import dataclass
 
 @dataclass(order=True)
 class Event:
-    # def __init__(self, time: float, gate: Gate):
-    #     self.time = time
-    #     self.gate = gate
     time: float
     gate: Gate
 

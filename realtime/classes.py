@@ -23,19 +23,17 @@ class Gate:
         for output in self.outputs:
             await output.process(self)
             
-class Min(Gate):
-    """The Min gate takes any number of inputs. It outputs once any input goes high."""
-    
+"""The Min gate takes any number of inputs. It outputs once any input goes high."""
+class Min(Gate):    
     def __init__(self):
         super().__init__()
         
     async def process(self, _):
         if self.high: return
         await self.propagate()
-            
+
+"""The Max gate can take any number of input events, but it must be told the number of inputs to wait for. It outputs once all inputs are high."""
 class Max(Gate):
-    """The Max gate takes any number of inputs. It outputs once all inputs are high."""
-    
     def __init__(self, num_inputs: int):
         super().__init__()
         self.num_inputs = num_inputs
@@ -45,9 +43,8 @@ class Max(Gate):
         self.received_count += 1
         if self.received_count == self.num_inputs: await self.propagate()
             
-class AddConstant(Gate):
-    """The AddConstant gate takes exactly one input event T and a constant K, and outputs at time T + K."""
-    
+"""The AddConstant gate takes exactly one input event T and a constant K, and outputs at time T + K."""
+class AddConstant(Gate):    
     def __init__(self, K: float):
         super().__init__()
         self.K = K
@@ -56,9 +53,8 @@ class AddConstant(Gate):
         await asyncio.sleep(self.K)
         await self.propagate()
         
+"""The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
 class Inhibit(Gate):
-    """The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
-
     def __init__(self):
         super().__init__()
         self.td = None
@@ -84,7 +80,8 @@ class Inhibit(Gate):
             self.propagate()
         else:
             raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
-            
+
+"""Connect other gates to an Exit gate to singify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
 class Exit(Gate):
     def __init__(self):
         super().__init__()
@@ -93,6 +90,7 @@ class Exit(Gate):
         print(f"time elapsed: {time.time() - circuit_start}")
         raise ExitProgram()
 
+"""Use the Entry gate to provide initial event signals, with delays, to the circuit."""
 class Entry(Gate):
     def __init__(self):
         super().__init__()
