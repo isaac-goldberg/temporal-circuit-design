@@ -19,7 +19,7 @@ async def main():
     delay2 = AddConstGate(0.5)
     entry2.connect(delay2)
 
-    # see fastest path    
+    # see fastest path
     mingate = MinGate()
     exit = ExitGate()
     

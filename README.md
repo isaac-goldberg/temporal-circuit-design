@@ -1,4 +1,4 @@
-# Temporal Logic Primitives in Python
+# Temporal Logic Circuit Simulation in Python
 This repo has two ways to simulate a race logic circuit:
 - `/virtual`: your program executes instanteously, using a priority queue to ensure that events with different timings are certain to pop in the right order.
 
