@@ -6,6 +6,7 @@ circuit_start = 0
 class ExitProgram(Exception):
     pass
 
+"""An event is the equivalent of an 'edge' in traditional digital logic. The 'delay' of an event represents the time it takes for the signal to arrive at a gate."""
 class Event:
     def __init__(self, delay: float):
         self.outputs: list[Gate] = []

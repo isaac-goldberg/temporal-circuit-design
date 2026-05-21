@@ -1,4 +1,4 @@
-from classes import *
+from realtime.classes import *
 import asyncio
             
 async def main():
