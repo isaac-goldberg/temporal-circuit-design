@@ -3,12 +3,14 @@ import asyncio
             
 async def main():
     entry = Entry()
-    event1, event2 = entry.out_events(1, 2)
+    event1, event2 = entry.init_events(1, 2)
         
     gate = Max(event1, event2)
-    out = gate.out_events(0)
+    gateout = gate.out_wire()
     
-    Exit(out)
+    add = AddConstant(gateout, 1.5)
+    addout = add.out_wire()
+    Exit(addout)
     
     try:
         await entry.start()
