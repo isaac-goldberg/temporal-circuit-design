@@ -1,16 +1,19 @@
-from realtime.classes import *
+from classes import *
 import asyncio
             
 async def main():
     entry = Entry()
-    event1, event2 = entry.init_events(1, 2)
+    entry.schedule(1)
+    entry.schedule(2)
         
-    gate = Max(event1, event2)
-    gateout = gate.out_wire()
+    gate = Min()
+    entry.connect(gate)
     
-    add = AddConstant(gateout, 1.5)
-    addout = add.out_wire()
-    Exit(addout)
+    delay = AddConstant(0.5)
+    gate.connect(delay)
+
+    exit = Exit()
+    delay.connect(exit)
     
     try:
         await entry.start()

@@ -6,153 +6,108 @@ circuit_start = 0
 class ExitProgram(Exception):
     pass
 
-"""An event is the equivalent of an 'edge' in traditional digital logic. The 'delay' of an event represents the time it takes for the signal to arrive at a gate."""
-class Event:
-    def __init__(self, delay: float):
-        self.outputs: list[Gate] = []
-        self.delay = delay
-    
-    def __str__(self):
-        return f"<Event arriving in {self.delay}>"
-        
-    def add_outputs(self, *output_gates):
-        self.outputs.extend(output_gates)
-    
-    async def propagate(self):
-        await asyncio.sleep(self.delay)
-        for gate in self.outputs:
-            await gate.propagate(self)
-            
-"""A wire is just an event with delay 0, used for connecting gates instanteously."""
-class Wire(Event):
-    def __init__(self):
-        super().__init__(0)
-
 """Base class for all gates."""
 class Gate:
-    def __init__(self, *input_events: Event):
-        for in_event in input_events:
-            self.init_input(in_event)
-        
-        self.inputs = list(input_events)
-        self.outputs: list[Event] = []
+    def __init__(self):
+        self.outputs: list[Gate] = []
         self.high = False
     
-    """Get one output wire from this gate."""
-    def out_wire(self):
-        wire = Wire()
-        self.outputs.append(wire)
-        return wire
+    def connect(self, gate: Gate):
+        self.outputs.append(gate)
         
-    """Get multiple (identical) output wires from this gate. Returns a tuple."""
-    def out_wires(self, count: int):
-        wires = []
-        for _ in range(count):
-            out = Wire()
-            self.outputs.append(out)
-            wires.append(out)
-        if count == 1:
-            return wires[0]
-        return tuple(wires)
-        
-    def init_input(self, event: Event):
-        event.add_outputs(self)
+    async def process(self, _):
+        raise NotImplementedError("process() cannot be called on base Gate class")
     
-    def add_inputs(self, *events: Event):
-        for event in events:
-            self.init_input(event)
-        self.inputs.extend(events)
-    
-    def add_outputs(self, *events: Event):
-        self.outputs.extend(events)
-        
-    async def final_propagate(self):
+    async def propagate(self):
         self.high = True
         for output in self.outputs:
-            await output.propagate()
+            await output.process(self)
             
 class Min(Gate):
     """The Min gate takes any number of inputs. It outputs once any input goes high."""
     
-    def __init__(self, *input_events):
-        super().__init__(*input_events)
-    
-    async def propagate(self, _):
-        if self.high:
-            return
-        await self.final_propagate()
+    def __init__(self):
+        super().__init__()
+        
+    async def process(self, _):
+        if self.high: return
+        await self.propagate()
             
 class Max(Gate):
     """The Max gate takes any number of inputs. It outputs once all inputs are high."""
     
-    def __init__(self, *input_events: Event):
-        super().__init__(*input_events)
-    
-    async def propagate(self, input):
-        self.inputs.remove(input)
-        if len(self.inputs) == 0:
-            await self.final_propagate()
+    def __init__(self, num_inputs: int):
+        super().__init__()
+        self.num_inputs = num_inputs
+        self.received_count = 0
+        
+    async def process(self, _):
+        self.received_count += 1
+        if self.received_count == self.num_inputs: await self.propagate()
             
 class AddConstant(Gate):
     """The AddConstant gate takes exactly one input event T and a constant K, and outputs at time T + K."""
     
-    def __init__(self, input_event: Event, K: float):
+    def __init__(self, K: float):
+        super().__init__()
         self.K = K
-        super().__init__(input_event)
         
-    async def propagate(self, _):
+    async def process(self, _):
         await asyncio.sleep(self.K)
-        await self.final_propagate()
+        await self.propagate()
         
 class Inhibit(Gate):
     """The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
 
-    def __init__(self, Td: Event, Tc: Event):
-        self.td = Td
-        self.tc = Tc
+    def __init__(self):
+        super().__init__()
+        self.td = None
+        self.tc = None
         self.tc_arrived = False
+        self.high
         
-    async def propagate(self, event: Event):
-        if self.tc_arrived or self.high:
-            return
+    def connect(self):
+        raise NotImplementedError("The Inhibit gate doesn't use the connect() method. Use connect_td() and connect_tc()")
         
-        if event == self.tc:
+    def connect_td(self, gate: Gate):
+        self.td = gate
+        
+    def connect_tc(self, gate: Gate):
+        self.tc = gate
+        
+    async def process(self, gate: Gate):
+        if self.tc_arrived or self.high: return
+        
+        if gate == self.tc:
             self.tc_arrived = True
-        elif event == self.td:
-            self.final_propagate()
+        elif gate == self.td:
+            self.propagate()
         else:
-            print("error: tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
+            raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
             
 class Exit(Gate):
-    def __init__(self, *input_events):
-        super().__init__(*input_events)
+    def __init__(self):
+        super().__init__()
     
-    def out_wire():
-        print("cannot output from an exit gate")
-        raise ExitProgram()
-    
-    async def propagate(_self, _):
+    async def process(self, _):
         print(f"time elapsed: {time.time() - circuit_start}")
         raise ExitProgram()
 
 class Entry(Gate):
-    def __init__(self, *input_events: Event):
-        super().__init__(*input_events)
-        
-    def init_events(self, *delays: float):
-        events = []
-        for delay in delays:
-            out = Event(delay)
-            self.outputs.append(out)
-            events.append(out)
-            
-        if len(events) == 1:
-            return events[0]
-        return tuple(events)
+    def __init__(self):
+        super().__init__()
+        self.scheduled_events = []
     
+    def schedule(self, delay: float):
+        self.scheduled_events.append(delay)
+        
+    async def send_signal(self, delay: float):
+        await asyncio.sleep(delay)
+        await self.propagate()
+        
     async def start(self):
         global circuit_start
         circuit_start = time.time()
-        tasks = [asyncio.create_task(output.propagate()) for output in self.outputs]
+        tasks = [asyncio.create_task(self.send_signal(delay)) for delay in self.scheduled_events]
         await asyncio.gather(*tasks)
         
