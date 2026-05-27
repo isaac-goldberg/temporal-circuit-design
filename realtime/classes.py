@@ -7,9 +7,9 @@ class ExitSimulation(Exception):
 class Simulation:
     def __init__(self):
         self.circuit_start = 0
-        self.entry_gates: list[EntryGate] = []
+        self.entry_gates: list[EventScheduler] = []
         
-    def add_entry(self, gate: EntryGate):
+    def add_entry(self, gate: EventScheduler):
         self.entry_gates.append(gate)
         
     async def start(self):
@@ -25,8 +25,11 @@ class Gate:
         self.outputs: list[Gate] = []
         self.high = False
     
-    def connect(self, gate: Gate):
-        self.outputs.append(gate)
+    """Connect another gate (or gates) to be an input to this gate. Returns this gate to allow for chaining."""
+    def connect(self, *other_gates: Gate):
+        for other_gate in other_gates: 
+            other_gate.outputs.append(self)
+        return self
         
     async def process(self, _):
         raise NotImplementedError("process() cannot be called on base Gate class")
@@ -94,7 +97,7 @@ class InhibitGate(Gate):
         else:
             raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
 
-"""Connect other gates to an Exit gate to singify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
+"""Connect other gates to an Exit gate to signify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
 class ExitGate(Gate):
     def __init__(self):
         super().__init__()
@@ -103,8 +106,8 @@ class ExitGate(Gate):
         print(f"time elapsed: {time.time() - circuit_start}")
         raise ExitSimulation()
 
-"""Use the Entry gate to provide initial event signals, with delays, to the circuit."""
-class EntryGate(Gate):
+"""Use the EventSchedulerGate to provide initial event signals, with delays, to the circuit."""
+class EventScheduler(Gate):
     def __init__(self):
         super().__init__()
         self.scheduled_events = []

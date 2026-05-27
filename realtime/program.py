@@ -3,29 +3,22 @@ import asyncio
 
 async def main():
     # path 1
-    entry = EntryGate()
+    entry = EventScheduler()
     entry.schedule(1)
     entry.schedule(2)
     
-    maxgate = MaxGate(2)
-    entry.connect(maxgate)
-    delay = AddConstGate(0.5)
-    maxgate.connect(delay)
+    maxgate = MaxGate(2).connect(entry)
+    delay = AddConstGate(0.5).connect(maxgate)
     
     # path 2
-    entry2 = EntryGate()
+    entry2 = EventScheduler()
     entry2.schedule(1)
     
-    delay2 = AddConstGate(0.5)
-    entry2.connect(delay2)
+    delay2 = AddConstGate(0.5).connect(entry2)
 
     # see fastest path
-    mingate = MinGate()
-    exit = ExitGate()
-    
-    delay.connect(mingate)
-    delay2.connect(mingate)
-    mingate.connect(exit)
+    mingate = MinGate().connect(delay).connect(delay2)
+    ExitGate().connect(mingate)
     
     try:
         await simulation.start()
