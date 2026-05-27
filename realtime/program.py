@@ -17,8 +17,8 @@ async def main():
     delay2 = AddConstGate(0.5).connect(entry2)
 
     # see fastest path
-    mingate = MinGate().connect(delay).connect(delay2)
-    ExitGate().connect(mingate)
+    mingate = MinGate().connect(delay, delay2)
+    Exit().connect(mingate)
     
     try:
         await simulation.start()

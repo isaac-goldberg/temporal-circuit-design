@@ -95,10 +95,10 @@ class InhibitGate(Gate):
         elif gate == self.td:
             self.propagate()
         else:
-            raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this gate")
+            raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this InhibitGate")
 
 """Connect other gates to an Exit gate to signify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
-class ExitGate(Gate):
+class Exit(Gate):
     def __init__(self):
         super().__init__()
     
