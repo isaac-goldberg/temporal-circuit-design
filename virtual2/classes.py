@@ -1,24 +1,24 @@
 class Simulation:
     def __init__(self):
-        self.entry_gates: list[EventScheduler] = []
+        self.event_schedulers: list[EventScheduler] = []
         
     def add_entry(self, gate: EventScheduler):
-        self.entry_gates.append(gate)
+        self.event_schedulers.append(gate)
         
     def start(self):
-        for gate in self.entry_gates:
+        for gate in self.event_schedulers:
             gate.start()
         
 simulation = Simulation()
 
-"""Base class for all gates."""
 class Gate:
+    """Base class for all gates."""
     def __init__(self):
         self.outputs: list[Gate] = []
         self.high = False
     
-    """Connect another gate (or gates) to be an input to this gate. Returns this gate to allow for chaining."""
     def connect(self, *other_gates: Gate):
+        """Connect another gate (or gates) to be an input to this gate. Returns this gate to allow for chaining."""
         for other_gate in other_gates: 
             other_gate.outputs.append(self)
         return self
@@ -31,8 +31,8 @@ class Gate:
         for output in self.outputs:
             output.process(self, t)
             
-"""The Min gate takes any number of inputs. It outputs once any input goes high."""
 class MinGate(Gate):
+    """The Min gate takes any number of inputs, defaulting to 2. It outputs once any input goes high."""
     def __init__(self, num_inputs: int = 2):
         super().__init__()
         self.num_inputs = num_inputs
@@ -47,8 +47,8 @@ class MinGate(Gate):
         if self.received_count == self.num_inputs:
             self.propagate(self.min_time)
 
-"""The Max gate can take any number of input events, but it must be told the number of inputs to wait for. It outputs once all inputs are high."""
 class MaxGate(Gate):
+    """The Max gate can take any number of input events, defaulting to 2. It outputs once all inputs are high."""
     def __init__(self, num_inputs: int = 2):
         super().__init__()
         self.num_inputs = num_inputs
@@ -63,8 +63,8 @@ class MaxGate(Gate):
         if self.received_count == self.num_inputs:
             self.propagate(self.max_time)
             
-"""The AddConst gate must be initialized with a constant float K, takes exactly one input event T, and outputs at time T + K."""
-class AddConstGate(Gate):    
+class AddConstGate(Gate):
+    """The AddConst gate must be initialized with a constant float K, takes exactly one input event T, and outputs at time T + K."""
     def __init__(self, K: float):
         super().__init__()
         self.K = K
@@ -72,8 +72,8 @@ class AddConstGate(Gate):
     def process(self, _, t: float):
         self.propagate(t + self.K)
         
-"""The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
 class InhibitGate(Gate):
+    """The Inhibit gate takes exactly two inputs: Td (data) and Tc (control), and outputs at time Td if and only if Td < Tc."""
     def __init__(self):
         super().__init__()
         self.td = None
@@ -100,23 +100,27 @@ class InhibitGate(Gate):
         else:
             raise AssertionError("tried to propagate inhibit gate from an event that isn't the Td or Tc for this InhibitGate")
 
-"""Connect other gates to an Exit gate to signify the end of the circuit. Once an Exit gate receives a signal, it terminates the program."""
 class Exit(Gate):
+    """Connect other gates to an Exit to signify the end of the circuit. Prints the total time it took for a signal to reach this exit."""
     def __init__(self):
         super().__init__()
     
     def process(self, _, t: float):
         print(f"exit reached at time: {t}")
 
-"""Use the EventSchedulerGate to provide initial event signals, with delays, to the circuit."""
 class EventScheduler(Gate):
+    """Use the EventScheduler to provide initial event signals, with delays, to the circuit."""
     def __init__(self):
         super().__init__()
         self.scheduled_events = []
         simulation.add_entry(self)
     
-    def schedule(self, delay: float):
-        self.scheduled_events.append(delay)
+    def schedule(self, *delays: float):
+        "Schedule a signal (or signals) to be sent through the circuit from this point. Returns this EventScheduler to allow for chaining."
+        for delay in delays:
+            self.scheduled_events.append(delay)
+            
+        return self
         
     def start(self):
         for delay in self.scheduled_events:
